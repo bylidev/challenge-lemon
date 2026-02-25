@@ -16,13 +16,19 @@ Antes de comenzar, asegúrate de tener instalados los siguientes requisitos:
 
 1. Clona este repositorio:
    ```bash
-   git clone <URL_DEL_REPOSITORIO>
+   git clone https://github.com/bylidev/challenge-lemon
    cd challenge-lemon
    ```
 
 2. Configura las variables necesarias en el archivo `application.yml` ubicado en `src/main/resources/`.
 
 3. Asegúrate de que el archivo `docker-compose.yml` esté configurado correctamente para tu entorno.
+   - Servicios incluidos en el `docker-compose.yml`:
+     - postgres
+     - kafka
+     - kafka ui
+     - zookeeper
+     - debezium (configurado para escuchar los cambios en la base de datos y emitir eventos a Kafka)
 
 ## Levantar el proyecto
 
