@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: quay.io/debezium/postgres:16
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=payment_authorization_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: [ "postgres", "-c", "wal_level=logical" ]
+    ports:
+      - "5432:5432"
+
+  zookeeper:
+    image: quay.io/debezium/zookeeper:2.5
+    container_name: zookeeper
+    ports:
+      -  "2181:2181"
+
+  kafka:
+    image: quay.io/debezium/kafka:2.5
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      - ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+    volumes:
+      - kafka_data:/kafka/data
+    depends_on:
+      - zookeeper
+
+  debezium:
+    image: quay.io/debezium/connect:2.5
+    container_name: debezium
+    ports:
+      - "8083:8083"
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+    volumes:
+      - ./connector_config.json:/template/connector_config.json
+    depends_on:
+      - kafka
+      - postgres
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "3000:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=debezium
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://debezium:8083
+    depends_on:
+      - kafka
+      - debezium
+
+  debezium-setup:
+    image: curlimages/curl:latest
+    container_name: debezium-setup
+    volumes:
+      - ./connector_config.json:/template/connector_config.json
+    depends_on:
+      - debezium
+    entrypoint: >
+      sh -c "
+        echo 'Esperando a que Debezium responda...' &&
+        until curl -s -o /dev/null http://debezium:8083/; do sleep 2; done;
+        echo 'Registrando conector...' &&
+        curl -i -X POST -H 'Content-Type: application/json' --data @/template/connector_config.json http://debezium:8083/connectors &&
+        echo '\nProceso de registro finalizado.'
+      "
+
+volumes:
+  postgres_data:
+  kafka_data:

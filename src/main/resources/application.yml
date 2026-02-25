@@ -1,0 +1,39 @@
+micronaut:
+  application:
+    name: lemon-challenge
+
+jpa:
+  default:
+    entity-scan:
+      packages:
+        - 'me.lemon.challenge.lopez.infrastructure.repository.entity'
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: validate
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+datasources:
+  default:
+    url: jdbc:postgresql://localhost:5432/payment_authorization_db
+    driverClassName: org.postgresql.Driver
+    username: admin
+    password: secret
+    dialect: POSTGRES
+    schema-generate: NONE
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+
+kafka:
+  bootstrap:
+    servers: localhost:29092
+  consumer:
+    group-id: lemon-challenge-group
+    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  producer:
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.apache.kafka.common.serialization.StringSerializer
